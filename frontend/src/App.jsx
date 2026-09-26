@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
+import GrammagePage from './GrammagePage.jsx'
 
 export default function App() {
   const [username, setUsername] = useState('printer')
   const [password, setPassword] = useState('print123456')
   const [token, setToken] = useState(localStorage.getItem('print_token') || '')
   const [role, setRole] = useState(localStorage.getItem('print_role') || '')
+  const [me, setMe] = useState(localStorage.getItem('print_user') || '')
+  const [page, setPage] = useState('register')
   const [rows, setRows] = useState([])
   const [sheet, setSheet] = useState('插页-02')
   const [cyan, setCyan] = useState('0.08')
@@ -29,11 +32,11 @@ export default function App() {
   }
 
   useEffect(() => {
-    if (!token) return
+    if (!token || page !== 'register') return
     load()
     const timer = setInterval(load, 1000)
     return () => clearInterval(timer)
-  }, [token])
+  }, [token, page])
 
   async function enter() {
     const data = await api('/api/auth/login', {
@@ -42,8 +45,10 @@ export default function App() {
     })
     localStorage.setItem('print_token', data.access_token)
     localStorage.setItem('print_role', data.role)
+    localStorage.setItem('print_user', data.username)
     setToken(data.access_token)
     setRole(data.role)
+    setMe(data.username)
   }
 
   async function send() {
@@ -66,6 +71,7 @@ export default function App() {
     localStorage.clear()
     setToken('')
     setRole('')
+    setMe('')
   }
 
   if (!token) {
@@ -81,35 +87,70 @@ export default function App() {
     )
   }
 
+  const navBtn = (key) => ({
+    fontWeight: page === key ? 'bold' : 'normal',
+    marginRight: 8,
+  })
+
   return (
     <main>
-      <h1>印刷套准复核台</h1>
-      <button onClick={leave}>退出</button>
-      {role === 'writer' && (
-        <p>
-          <input value={sheet} onChange={(e) => setSheet(e.target.value)} />
-          <input value={cyan} onChange={(e) => setCyan(e.target.value)} />
-          <input value={magenta} onChange={(e) => setMagenta(e.target.value)} />
-          <button onClick={send}>送复核</button>
-        </p>
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          borderBottom: '1px solid #ccc',
+          paddingBottom: 8,
+          marginBottom: 12,
+        }}
+      >
+        <strong>印刷套准复核台</strong>
+        <nav>
+          <button style={navBtn('register')} onClick={() => setPage('register')}>
+            套准复核
+          </button>
+          <button style={navBtn('grammage')} onClick={() => setPage('grammage')}>
+            纸型克重
+          </button>
+        </nav>
+        <span style={{ marginLeft: 'auto' }}>
+          {me}（{role === 'writer' ? '印刷员' : '只读'}）
+        </span>
+        <button onClick={leave}>退出</button>
+      </header>
+
+      {page === 'grammage' ? (
+        <GrammagePage api={api} role={role} />
+      ) : (
+        <>
+          <h1>套准复核</h1>
+          {role === 'writer' && (
+            <p>
+              <input value={sheet} onChange={(e) => setSheet(e.target.value)} />
+              <input value={cyan} onChange={(e) => setCyan(e.target.value)} />
+              <input value={magenta} onChange={(e) => setMagenta(e.target.value)} />
+              <button onClick={send}>送复核</button>
+            </p>
+          )}
+          {error && <p>{error}</p>}
+          <table>
+            <thead>
+              <tr><th>印张</th><th>青</th><th>品</th><th>状态</th><th>结论</th></tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.sheet}</td>
+                  <td>{row.cyan_mm}</td>
+                  <td>{row.magenta_mm}</td>
+                  <td>{row.status}</td>
+                  <td>{row.verdict || '等待'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
-      {error && <p>{error}</p>}
-      <table>
-        <thead>
-          <tr><th>印张</th><th>青</th><th>品</th><th>状态</th><th>结论</th></tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td>{row.sheet}</td>
-              <td>{row.cyan_mm}</td>
-              <td>{row.magenta_mm}</td>
-              <td>{row.status}</td>
-              <td>{row.verdict || '等待'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </main>
   )
 }
