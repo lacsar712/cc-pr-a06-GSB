@@ -28,9 +28,33 @@ def ensure():
                 sheet text NOT NULL,
                 cyan_mm double precision NOT NULL,
                 magenta_mm double precision NOT NULL,
+                weight_gsm double precision NOT NULL,
                 status text NOT NULL,
                 verdict text NOT NULL DEFAULT '',
                 reason text NOT NULL DEFAULT '',
+                created_by text NOT NULL,
+                created_at timestamptz NOT NULL
+            )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS weight_settings (
+                id integer PRIMARY KEY DEFAULT 1,
+                min_gsm double precision NOT NULL,
+                max_gsm double precision NOT NULL,
+                updated_by text NOT NULL,
+                updated_at timestamptz NOT NULL,
+                CONSTRAINT weight_settings_singleton CHECK (id = 1)
+            )"""
+        )
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS weight_history (
+                id serial PRIMARY KEY,
+                job_id integer NOT NULL REFERENCES jobs(id),
+                event text NOT NULL,
+                weight_gsm double precision NOT NULL,
+                min_gsm double precision NOT NULL,
+                max_gsm double precision NOT NULL,
+                accepted boolean NOT NULL,
                 created_by text NOT NULL,
                 created_at timestamptz NOT NULL
             )"""
